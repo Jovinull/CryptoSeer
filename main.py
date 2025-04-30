@@ -2,7 +2,7 @@ import datetime as dt
 import pandas as pd
 from data import download_data, preprocess_data
 from model import build_model, save_model, load_existing_model
-from utils import evaluate_model, plot_predictions, predict_future
+from utils import evaluate_model, plot_predictions, predict_future, recursive_forecast
 import numpy as np
 
 if __name__ == "__main__":
@@ -13,6 +13,7 @@ if __name__ == "__main__":
     end_date = dt.datetime.now().strftime("%Y-%m-%d")
     prediction_days = 60
     future_day = 30
+    forecast_horizon = 30
     ticker = f"{crypto_currency}-{against_currency}"
     model_file = f"model_{crypto_currency}.h5"
 
@@ -46,4 +47,10 @@ if __name__ == "__main__":
     plot_predictions(test_data.index, actual_prices, prediction_prices, crypto_currency)
 
     future_price = predict_future(model, model_inputs, scaler, prediction_days)
-    print(f"\nPrevisão de preço para os próximos {future_day} dias: ${future_price:.2f}")
+    print(f"\n📈 Previsão de preço para os próximos {future_day} dias: ${future_price:.2f}")
+
+    # Previsão recursiva para múltiplos dias no futuro
+    forecast = recursive_forecast(model, model_inputs[-prediction_days:, 0], forecast_horizon, scaler)
+    print(f"\n🔮 Previsão recursiva para os próximos {forecast_horizon} dias:")
+    for i, price in enumerate(forecast, 1):
+        print(f"Dia +{i}: ${price[0]:.2f}")

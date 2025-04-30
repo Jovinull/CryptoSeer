@@ -32,3 +32,16 @@ def predict_future(model, model_inputs, scaler, prediction_days):
     real_data = np.reshape(real_data, (real_data.shape[0], real_data.shape[1], 1))
     prediction = model.predict(real_data)
     return scaler.inverse_transform(prediction)[0][0]
+
+
+def recursive_forecast(model, last_sequence, future_steps, scaler):
+    predictions = []
+    input_seq = last_sequence.copy()
+
+    for _ in range(future_steps):
+        input_seq_reshaped = input_seq.reshape(1, input_seq.shape[0], 1)
+        pred = model.predict(input_seq_reshaped, verbose=0)
+        predictions.append(pred[0, 0])
+        input_seq = np.append(input_seq[1:], pred[0, 0])
+
+    return scaler.inverse_transform(np.array(predictions).reshape(-1, 1))
