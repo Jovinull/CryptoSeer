@@ -4,16 +4,17 @@ from data import download_data, preprocess_data
 from model import build_model, save_model, load_existing_model
 from utils import evaluate_model, plot_predictions, predict_future, recursive_forecast
 import numpy as np
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
 if __name__ == "__main__":
     crypto_currency = 'DOGE'
     against_currency = 'USD'
-    start_date = "2014-01-01"
-    test_start_date = dt.datetime(2018, 1, 1)
+    start_date = "2020-01-01"
+    test_start_date = dt.datetime(2022, 1, 1)
     end_date = dt.datetime.now().strftime("%Y-%m-%d")
     prediction_days = 60
     future_day = 30
-    forecast_horizon = 30
+    forecast_horizon = 15  # quantidade de dias futuros para prever recursivamente
     ticker = f"{crypto_currency}-{against_currency}"
     model_file = f"model_{crypto_currency}.h5"
 
@@ -23,7 +24,13 @@ if __name__ == "__main__":
     model = load_existing_model(model_file)
     if not model:
         model = build_model((x_train.shape[1], 1))
-        model.fit(x_train, y_train, epochs=25, batch_size=32)
+
+        callbacks = [
+            EarlyStopping(patience=5, restore_best_weights=True),
+            ReduceLROnPlateau(factor=0.5, patience=3)
+        ]
+
+        model.fit(x_train, y_train, epochs=100, batch_size=32, callbacks=callbacks)
         save_model(model, model_file)
 
     test_data = download_data(ticker, test_start_date.strftime("%Y-%m-%d"), end_date)
@@ -47,10 +54,10 @@ if __name__ == "__main__":
     plot_predictions(test_data.index, actual_prices, prediction_prices, crypto_currency)
 
     future_price = predict_future(model, model_inputs, scaler, prediction_days)
-    print(f"\n📈 Previsão de preço para os próximos {future_day} dias: ${future_price:.2f}")
+    print(f"\nPrevisão de preço para os próximos {future_day} dias: ${future_price:.2f}")
 
     # Previsão recursiva para múltiplos dias no futuro
     forecast = recursive_forecast(model, model_inputs[-prediction_days:, 0], forecast_horizon, scaler)
-    print(f"\n🔮 Previsão recursiva para os próximos {forecast_horizon} dias:")
+    print(f"\nPrevisão recursiva para os próximos {forecast_horizon} dias:")
     for i, price in enumerate(forecast, 1):
         print(f"Dia +{i}: ${price[0]:.2f}")
