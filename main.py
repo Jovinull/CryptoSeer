@@ -48,7 +48,10 @@ if __name__ == "__main__":
     x_test = np.array(x_test)
 
     prediction_prices = model.predict(x_test)
-    prediction_prices = scaler.inverse_transform(prediction_prices)
+    # Cria um array com zeros com o mesmo número de colunas do scaler
+    full_pred = np.zeros((prediction_prices.shape[0], scaler.scale_.shape[0]))
+    full_pred[:, 0] = prediction_prices[:, 0]  # coloca as previsões na coluna do 'Close'
+    prediction_prices = scaler.inverse_transform(full_pred)[:, 0]  # pega só a coluna do 'Close'
 
     evaluate_model(actual_prices, prediction_prices)
     plot_predictions(test_data.index, actual_prices, prediction_prices, crypto_currency)
