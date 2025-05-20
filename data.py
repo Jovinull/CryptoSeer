@@ -6,12 +6,12 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
-def download_data(ticker: str, start: str, end: str, max_retries=3):
+def download_data(ticker: str, start: str, end: str, max_retries=6):
     for attempt in range(max_retries):
-        data = yf.download(ticker, start=start, end=end)
+        data = yf.download(ticker, start=start, end=end, progress=False, threads=False)
         if not data.empty:
             return data
-        wait = 2 ** attempt
+        wait = 5 * (attempt + 1)  # espera: 5s, 10s, 15s, ...
         print(f"Tentativa {attempt + 1} falhou. Tentando novamente em {wait} segundos...")
         time.sleep(wait)
     raise ValueError(f"Falha ao baixar dados para {ticker} após {max_retries} tentativas.")
