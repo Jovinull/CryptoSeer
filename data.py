@@ -2,10 +2,17 @@ import yfinance as yf
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
+import time
 
-
-def download_data(ticker: str, start: str, end: str):
-    return yf.download(ticker, start=start, end=end)
+def download_data(ticker: str, start: str, end: str, max_retries=3):
+    for attempt in range(max_retries):
+        data = yf.download(ticker, start=start, end=end)
+        if not data.empty:
+            return data
+        wait = 2 ** attempt
+        print(f"Tentativa {attempt + 1} falhou. Tentando novamente em {wait} segundos...")
+        time.sleep(wait)
+    raise ValueError(f"Falha ao baixar dados para {ticker} após {max_retries} tentativas.")
 
 
 def preprocess_data(data, prediction_days, future_day, scaler=None):
