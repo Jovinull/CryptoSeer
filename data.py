@@ -64,15 +64,23 @@ def download_data(ticker: str, start: str, end: str, max_retries=6, cache_dir="d
     raise ValueError(f"❌ Falha ao baixar dados para {ticker} após {max_retries} tentativas.")
 
 
-def add_technical_indicators(df):
+def add_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
-    # SMA e EMA
-    for period in [7, 14, 30]:
+    # Médias móveis simples e exponenciais
+    for period in [7, 14, 30, 50, 100]:
         df[f'SMA_{period}'] = df['Close'].rolling(window=period).mean()
         df[f'EMA_{period}'] = df['Close'].ewm(span=period, adjust=False).mean()
 
-    # RSI
+    # Bollinger Bands
+    sma20 = df['Close'].rolling(window=20).mean()
+    std20 = df['Close'].rolling(window=20).std()
+    df['BB_upper'] = sma20 + 2 * std20
+    df['BB_lower'] = sma20 - 2 * std20
+    df['BB_width'] = df['BB_upper'] - df['BB_lower']
+    df['BB_percent'] = (df['Close'] - df['BB_lower']) / (df['BB_upper'] - df['BB_lower'])
+
+    # RSI (Relative Strength Index)
     delta = df['Close'].diff()
     up = delta.clip(lower=0)
     down = -1 * delta.clip(upper=0)
@@ -88,13 +96,35 @@ def add_technical_indicators(df):
     df['MACD_signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
     df['MACD_hist'] = df['MACD'] - df['MACD_signal']
 
-    # Bollinger Bands (20 períodos)
-    sma20 = df['Close'].rolling(window=20).mean()
-    std20 = df['Close'].rolling(window=20).std()
-    df['BB_upper'] = sma20 + 2 * std20
-    df['BB_lower'] = sma20 - 2 * std20
-    df['BB_width'] = df['BB_upper'] - df['BB_lower']
+    # ROC (Rate of Change)
+    df['ROC'] = df['Close'].pct_change(periods=12) * 100
 
+    # Stochastic Oscillator
+    low14 = df['Low'].rolling(window=14).min()
+    high14 = df['High'].rolling(window=14).max()
+    df['Stoch_%K'] = 100 * ((df['Close'] - low14) / (high14 - low14))
+    df['Stoch_%D'] = df['Stoch_%K'].rolling(window=3).mean()
+
+    # Williams %R
+    df['Williams_%R'] = -100 * ((high14 - df['Close']) / (high14 - low14))
+
+    # OBV (On-Balance Volume)
+    obv = [0]
+    for i in range(1, len(df)):
+        if df['Close'].iloc[i] > df['Close'].iloc[i - 1]:
+            obv.append(obv[-1] + df['Volume'].iloc[i])
+        elif df['Close'].iloc[i] < df['Close'].iloc[i - 1]:
+            obv.append(obv[-1] - df['Volume'].iloc[i])
+        else:
+            obv.append(obv[-1])
+    df['OBV'] = obv
+
+    # CMO (Chande Momentum Oscillator)
+    cmo_up = up.rolling(14).sum()
+    cmo_down = down.rolling(14).sum()
+    df['CMO'] = 100 * (cmo_up - cmo_down) / (cmo_up + cmo_down)
+
+    # Limpa NaNs gerados pelas janelas
     df.dropna(inplace=True)
     return df
 
