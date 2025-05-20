@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     model = load_existing_model(model_file)
     if not model:
-        model = build_model((x_train.shape[1], 1))
+        model = build_model((x_train.shape[1], x_train.shape[2]))
 
         callbacks = [
             EarlyStopping(patience=5, restore_best_weights=True),
@@ -34,12 +34,16 @@ if __name__ == "__main__":
         save_model(model, model_file)
 
     test_data = download_data(ticker, test_start_date.strftime("%Y-%m-%d"), end_date)
+    test_data.index = pd.to_datetime(test_data.index, errors="coerce")
     actual_prices = test_data['Close'].values
     total_dataset = pd.concat((data, test_data), axis=0)
     total_dataset = add_technical_indicators(total_dataset)
 
     # Reaplique o mesmo scaler
-    model_inputs = total_dataset[len(total_dataset) - len(test_data) - prediction_days:].values
+    start_idx = len(total_dataset) - len(test_data) - prediction_days
+    if start_idx < 0:
+        raise ValueError("Intervalo de dados insuficiente para fazer a previsão. Verifique as datas ou aumente o dataset.")
+    model_inputs = total_dataset[start_idx:].values
     model_inputs = scaler.transform(model_inputs)
 
     x_test = []
@@ -60,7 +64,7 @@ if __name__ == "__main__":
     print(f"\nPrevisão de preço para os próximos {future_day} dias: ${future_price:.2f}")
 
     # Previsão recursiva para múltiplos dias no futuro
-    forecast = recursive_forecast(model, model_inputs[-prediction_days:, 0], forecast_horizon, scaler)
+    forecast = recursive_forecast(model, model_inputs[-prediction_days:], forecast_horizon, scaler)
     print(f"\nPrevisão recursiva para os próximos {forecast_horizon} dias:")
     for i, price in enumerate(forecast, 1):
         print(f"Dia +{i}: ${price[0]:.2f}")
