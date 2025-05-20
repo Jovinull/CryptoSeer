@@ -1,6 +1,6 @@
 import datetime as dt
 import pandas as pd
-from data import download_data, preprocess_data
+from data import add_technical_indicators, download_data, preprocess_data
 from model import build_model, save_model, load_existing_model
 from utils import evaluate_model, plot_predictions, predict_future, recursive_forecast
 import numpy as np
@@ -35,17 +35,17 @@ if __name__ == "__main__":
 
     test_data = download_data(ticker, test_start_date.strftime("%Y-%m-%d"), end_date)
     actual_prices = test_data['Close'].values
-    total_dataset = pd.concat((data['Close'], test_data['Close']), axis=0)
+    total_dataset = pd.concat((data, test_data), axis=0)
+    total_dataset = add_technical_indicators(total_dataset)
 
+    # Reaplique o mesmo scaler
     model_inputs = total_dataset[len(total_dataset) - len(test_data) - prediction_days:].values
-    model_inputs = model_inputs.reshape(-1, 1)
     model_inputs = scaler.transform(model_inputs)
 
     x_test = []
     for x in range(prediction_days, len(model_inputs)):
-        x_test.append(model_inputs[x - prediction_days:x, 0])
+        x_test.append(model_inputs[x - prediction_days:x])
     x_test = np.array(x_test)
-    x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
 
     prediction_prices = model.predict(x_test)
     prediction_prices = scaler.inverse_transform(prediction_prices)

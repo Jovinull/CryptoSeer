@@ -1,15 +1,15 @@
 from tensorflow.keras.models import Sequential, load_model
-from tensorflow.keras.layers import LSTM, Dropout, Dense
+from tensorflow.keras.layers import LSTM, Dropout, Dense, Bidirectional
 import os
 
 
 def build_model(input_shape):
     model = Sequential()
-    model.add(LSTM(units=50, return_sequences=True, input_shape=input_shape))
+    model.add(Bidirectional(LSTM(units=50, return_sequences=True), input_shape=input_shape))
     model.add(Dropout(0.2))
-    model.add(LSTM(units=50, return_sequences=True))
+    model.add(Bidirectional(LSTM(units=50, return_sequences=True)))
     model.add(Dropout(0.2))
-    model.add(LSTM(units=50))
+    model.add(Bidirectional(LSTM(units=50)))
     model.add(Dropout(0.2))
     model.add(Dense(units=1))
     model.compile(optimizer='adam', loss='mean_squared_error')
