@@ -11,8 +11,7 @@ def train_model(x_train, y_train, model_file, model_type):
         EarlyStopping(patience=5, restore_best_weights=True),
         ReduceLROnPlateau(factor=0.5, patience=3)
     ]
-    
-    # Usa o batch_size do melhor resultado de tuning
+
     history = model.fit(
         x_train,
         y_train,
