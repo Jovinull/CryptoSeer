@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     model = load_existing_model(model_file)
     if not model:
-        model = train_model(x_train, y_train, model_file)
+        model = train_model(x_train, y_train, model_file, model_type)
 
     test_data = download_data(ticker, test_start_date, end)
     test_data.index = pd.to_datetime(test_data.index, errors="coerce")
