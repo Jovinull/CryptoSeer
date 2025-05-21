@@ -1,3 +1,4 @@
+# config.py (atualizado para usar score_final como critério principal)
 import os
 import glob
 import pandas as pd
@@ -10,14 +11,19 @@ test_start_date = "2022-01-01"
 end_date = None
 model_file = f"model_{crypto_currency}.h5"
 
-# Carrega melhor tuning automaticamente do CSV mais recente
+# Carrega melhor tuning automaticamente do CSV mais recente (com base em score_final)
 def load_best_tuning():
     result_files = glob.glob("results/tuning_results_*.csv")
     if not result_files:
         return None
     latest = max(result_files, key=os.path.getctime)
     df = pd.read_csv(latest)
-    best = df.sort_values(by='loss').iloc[0]
+    # Usa score_final como critério principal (se existir)
+    if 'score_final' in df.columns:
+        best = df.sort_values(by='score_final').iloc[0]
+    else:
+        best = df.sort_values(by='loss').iloc[0]
+
     return {
         "model_type": best["model_type"],
         "units": int(best["units"]),

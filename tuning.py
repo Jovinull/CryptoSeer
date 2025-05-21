@@ -1,4 +1,4 @@
-# tuning.py (atualizado para testar todos os hiperparâmetros definidos)
+# tuning.py (atualizado para usar múltiplas métricas e score_final composto)
 import itertools
 import pandas as pd
 from datetime import datetime
@@ -8,24 +8,44 @@ import os
 from data.loader import download_data
 from data.preprocessing import preprocess_data
 from config import crypto_currency, against_currency, start_date, end_date
-
+from utils.metrics import evaluate_model
+import numpy as np
 import datetime as dt
 
-# Define grid completo de hiperparâmetros
 def get_param_grid():
     return {
+        # Tipo de rede
         "model_type": ['LSTM', 'GRU', 'Dense'],
-        "units": [32, 50, 64, 100],
-        "dropout": [0.1, 0.2, 0.3],
-        "num_layers": [1, 2, 3],
+
+        # Arquitetura da rede
+        "units": [32, 64, 96, 128],
+        "dropout": [0.0, 0.1, 0.2, 0.3],
+        "num_layers": [1, 2, 3, 4],
         "bidirectional": [True, False],
-        "batch_size": [16, 32, 64],
-        "optimizer": ['adam', 'rmsprop'],
-        "learning_rate": [0.001, 0.0005, 0.0001],
-        "prediction_days": [30, 60],
-        "future_day": [1, 5],
+
+        # Treinamento
+        "batch_size": [16, 32, 64, 128],
+        "optimizer": ['adam', 'rmsprop', 'nadam'],
+        "learning_rate": [0.01, 0.005, 0.001, 0.0005, 0.0001],
+
+        # Entrada de dados
+        "prediction_days": [15, 30, 60, 90, 120],
+        "future_day": [1, 3, 5, 10, 30],
+
+        # Normalização
         "scaler_type": ['MinMax', 'Standard']
     }
+
+
+def normalize_metrics(mse, mae, r2, loss):
+    # Valores esperados aproximados para normalização
+    # Isso pode ser refinado com base em dados históricos reais
+    return np.mean([
+        mse / 0.01,           # menor é melhor
+        mae / 0.01,           # menor é melhor
+        (1 - r2),             # menor é melhor
+        loss / 0.01           # menor é melhor
+    ])
 
 def hyperparameter_tuning():
     param_grid = get_param_grid()
@@ -46,15 +66,14 @@ def hyperparameter_tuning():
         print(f"\n🔍 {i+1}/{len(combinations)} - Testando: {params}")
 
         try:
-            # Override temporário de config para essa combinação
-            x_train, y_train, _ = preprocess_data(
+            x_train, y_train, scaler = preprocess_data(
                 base_data.copy(),
                 params['prediction_days'],
                 params['future_day'],
                 scaler_type=params['scaler_type']
             )
 
-            # Atualiza variáveis globais necessárias para build_model()
+            # Atualiza variáveis globais para arquitetura
             globals().update({
                 'tuning_units': params['units'],
                 'tuning_dropout': params['dropout'],
@@ -67,9 +86,23 @@ def hyperparameter_tuning():
             model = build_model((x_train.shape[1], x_train.shape[2]), params['model_type'])
             callbacks = [EarlyStopping(patience=5, restore_best_weights=True)]
             history = model.fit(x_train, y_train, epochs=50, batch_size=params['batch_size'], callbacks=callbacks, verbose=0)
-            final_loss = history.history['loss'][-1]
 
-            results.append({**params, "loss": final_loss})
+            final_loss = history.history['loss'][-1]
+            predictions = model.predict(x_train, verbose=0).flatten()
+            actuals = y_train
+
+            mse = np.mean((actuals - predictions) ** 2)
+            mae = np.mean(np.abs(actuals - predictions))
+            r2 = 1 - (np.sum((actuals - predictions)**2) / np.sum((actuals - np.mean(actuals))**2))
+
+            score_final = normalize_metrics(mse, mae, r2, final_loss)
+
+            results.append({**params,
+                            "loss": final_loss,
+                            "mse": mse,
+                            "mae": mae,
+                            "r2": r2,
+                            "score_final": score_final})
 
         except Exception as e:
             print(f"⚠️ Erro com combinação {i+1}: {e}")

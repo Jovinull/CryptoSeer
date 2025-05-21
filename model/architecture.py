@@ -1,6 +1,7 @@
+# architecture.py (agora com suporte a Nadam)
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import LSTM, GRU, Dense, Dropout, Bidirectional, Flatten, Input
-from tensorflow.keras.optimizers import Adam, RMSprop
+from tensorflow.keras.optimizers import Adam, RMSprop, Nadam
 import os
 from config import (
     tuning_units, tuning_dropout, tuning_num_layers,
@@ -31,7 +32,15 @@ def build_model(input_shape, model_type='LSTM'):
     model.add(Dense(50, activation='relu'))
     model.add(Dense(1))
 
-    optimizer = Adam(learning_rate=tuning_learning_rate) if tuning_optimizer == 'adam' else RMSprop(learning_rate=tuning_learning_rate)
+    if tuning_optimizer == 'adam':
+        optimizer = Adam(learning_rate=tuning_learning_rate)
+    elif tuning_optimizer == 'rmsprop':
+        optimizer = RMSprop(learning_rate=tuning_learning_rate)
+    elif tuning_optimizer == 'nadam':
+        optimizer = Nadam(learning_rate=tuning_learning_rate)
+    else:
+        raise ValueError(f"Otimizador não suportado: {tuning_optimizer}")
+
     model.compile(optimizer=optimizer, loss='mean_squared_error')
     return model
 
