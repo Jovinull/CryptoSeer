@@ -54,3 +54,10 @@ if __name__ == "__main__":
     print(f"\nPrevisão recursiva para os próximos {forecast_horizon} dias:")
     for i, price in enumerate(forecast, 1):
         print(f"Dia +{i}: ${price[0]:.2f}")
+        
+    # Baseline ingênuo
+    naive_pred = actual_prices[:-1]
+    naive_actual = actual_prices[1:]
+    from utils.metrics import evaluate_model
+    print("\n📉 Baseline Ingênuo (shift(1)):")
+    evaluate_model(naive_actual, naive_pred)

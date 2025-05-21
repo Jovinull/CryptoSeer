@@ -16,6 +16,19 @@ def plot_predictions(dates, actual, predicted, label):
     plt.tight_layout()
     plt.show()
 
+def plot_residuals(dates, actual, predicted):
+    residuals = np.array(actual) - np.array(predicted)
+    plt.figure(figsize=(12, 4))
+    plt.plot(dates, residuals, color='red', label='Residuals')
+    plt.axhline(0, linestyle='--', color='black')
+    plt.title("Gráfico de Resíduos")
+    plt.xlabel('Date')
+    plt.ylabel('Erro (Real - Previsto)')
+    plt.legend()
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
 def predict_future(model, model_inputs, scaler, prediction_days):
     real_data = model_inputs[-prediction_days:]
     real_data = np.expand_dims(real_data, axis=0)
