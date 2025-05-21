@@ -1,0 +1,9 @@
+crypto_currency = 'DOGE'
+against_currency = 'USD'
+start_date = "2020-01-01"
+test_start_date = "2022-01-01"
+end_date = None  # usa data atual se None
+prediction_days = 60
+future_day = 30
+forecast_horizon = 15
+model_file = f"model_{crypto_currency}.h5"
