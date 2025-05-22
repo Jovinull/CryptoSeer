@@ -1,18 +1,19 @@
 import datetime as dt
 from config import *
 from data.loader import download_data
-from data.preprocessing import preprocess_data
+from data.preprocessing import preprocess_data, add_technical_indicators
 from model.train import train_model
 from model.architecture import load_existing_model
 from utils.metrics import evaluate_model
-from utils.visualization import plot_predictions
-from utils.visualization import predict_future, recursive_forecast
+from utils.visualization import plot_predictions, predict_future, recursive_forecast
 import pandas as pd
 import numpy as np
 import warnings
+import os
+import joblib
 
 warnings.filterwarnings("ignore", category=UserWarning)
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # 0 = all logs, 1 = filter INFO, 2 = filter WARNING, 3 = only ERROR
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 if __name__ == "__main__":
     ticker = f"{crypto_currency}-{against_currency}"
@@ -20,18 +21,23 @@ if __name__ == "__main__":
     end = end_date or today
 
     data = download_data(ticker, start_date, end)
-    x_train, y_train, scaler = preprocess_data(data, prediction_days, future_day)
+    x_train, y_train, scaler, y_scaler = preprocess_data(data, prediction_days, future_day)
 
     model = load_existing_model(model_file)
     if not model:
-        model = train_model(x_train, y_train, model_file, model_type)
+        model = train_model(x_train, y_train, model_file, model_type, y_scaler)
+
+    # Tenta carregar o y_scaler salvo
+    scaler_path = model_file.replace(".h5", "_yscaler.pkl")
+    if os.path.exists(scaler_path):
+        y_scaler = joblib.load(scaler_path)
+    else:
+        raise ValueError("y_scaler não encontrado. Treine novamente com o novo formato.")
 
     test_data = download_data(ticker, test_start_date, end)
     test_data.index = pd.to_datetime(test_data.index, errors="coerce")
     actual_prices = test_data['Close'].values
     total_dataset = pd.concat((data, test_data), axis=0)
-
-    from data.preprocessing import add_technical_indicators
     total_dataset = add_technical_indicators(total_dataset)
 
     start_idx = len(total_dataset) - len(test_data) - prediction_days
@@ -43,25 +49,26 @@ if __name__ == "__main__":
     x_test = [model_inputs[x - prediction_days:x] for x in range(prediction_days, len(model_inputs))]
     x_test = np.array(x_test)
 
-    prediction_prices = model.predict(x_test)
-    full_pred = np.zeros((prediction_prices.shape[0], scaler.scale_.shape[0]))
-    full_pred[:, 0] = prediction_prices[:, 0]
-    prediction_prices = scaler.inverse_transform(full_pred)[:, 0]
+    # Faz predições e reverte o delta percentual para preço real
+    prediction_deltas = model.predict(x_test).flatten()
+    prediction_deltas = y_scaler.inverse_transform(prediction_deltas.reshape(-1, 1)).flatten()
 
-    evaluate_model(actual_prices, prediction_prices)
-    plot_predictions(test_data.index, actual_prices, prediction_prices, crypto_currency)
+    base_prices = actual_prices[:len(prediction_deltas)]
+    prediction_prices = base_prices * (1 + prediction_deltas)
 
-    future_price = predict_future(model, model_inputs, scaler, prediction_days)
+    evaluate_model(actual_prices[:len(prediction_prices)], prediction_prices)
+    plot_predictions(test_data.index[-len(prediction_prices):], actual_prices[:len(prediction_prices)], prediction_prices, crypto_currency)
+
+    # Previsão de futuro (ajuste necessário para variação percentual também)
+    future_price = predict_future(model, model_inputs, scaler, prediction_days, y_scaler, actual_prices[-1])
     print(f"\nPrevisão de preço para os próximos {future_day} dias: ${future_price:.2f}")
 
-    forecast = recursive_forecast(model, model_inputs[-prediction_days:], forecast_horizon, scaler)
+    forecast = recursive_forecast(model, model_inputs[-prediction_days:], forecast_horizon, scaler, y_scaler, actual_prices[-1])
     print(f"\nPrevisão recursiva para os próximos {forecast_horizon} dias:")
     for i, price in enumerate(forecast, 1):
         print(f"Dia +{i}: ${price[0]:.2f}")
-        
-    # Baseline ingênuo
+
     naive_pred = actual_prices[:-1]
     naive_actual = actual_prices[1:]
-    from utils.metrics import evaluate_model
     print("\n📉 Baseline Ingênuo (shift(1)):")
     evaluate_model(naive_actual, naive_pred)

@@ -125,6 +125,7 @@ celerybeat.pid
 
 # Model
 *.h5
+*.pkl
 
 # Environments
 .env

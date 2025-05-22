@@ -1,4 +1,3 @@
-# preprocessing.py (corrigido para aceitar scaler_type por argumento)
 import numpy as np
 import pandas as pd
 import time
@@ -16,12 +15,24 @@ def preprocess_data(data, prediction_days, future_day, scaler=None, scaler_type=
 
     x_train, y_train = [], []
     for x in range(prediction_days, len(scaled_data) - future_day):
+        # Verifica se o denominador é próximo de zero
+        if abs(scaled_data[x][0]) < 1e-8:
+            continue  # ignora essa amostra
+
         x_train.append(scaled_data[x - prediction_days:x])
-        y_train.append(scaled_data[x + future_day][0])  # preço de fechamento
+        pct_delta = (scaled_data[x + future_day][0] / scaled_data[x][0]) - 1
+        y_train.append(pct_delta)
+
+    if not y_train:
+        raise ValueError("Nenhum dado válido para y_train. Verifique se o dataset está correto.")
 
     x_train, y_train = np.array(x_train), np.array(y_train)
 
-    return x_train, y_train, scaler
+    # Normaliza y_train para regressão estável
+    y_scaler = StandardScaler()
+    y_train = y_scaler.fit_transform(y_train.reshape(-1, 1)).flatten()
+
+    return x_train, y_train, scaler, y_scaler
 
 def add_technical_indicators(df):
     df = df.copy()
