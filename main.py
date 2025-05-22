@@ -9,6 +9,10 @@ from utils.visualization import plot_predictions
 from utils.visualization import predict_future, recursive_forecast
 import pandas as pd
 import numpy as np
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # 0 = all logs, 1 = filter INFO, 2 = filter WARNING, 3 = only ERROR
 
 if __name__ == "__main__":
     ticker = f"{crypto_currency}-{against_currency}"

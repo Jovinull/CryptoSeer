@@ -11,7 +11,10 @@ from utils.metrics import evaluate_model
 import numpy as np
 import datetime as dt
 import multiprocessing
+import warnings
 
+warnings.filterwarnings("ignore", category=UserWarning)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # 0 = all logs, 1 = filter INFO, 2 = filter WARNING, 3 = only ERROR
 
 def get_param_grid():
     return {

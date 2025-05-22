@@ -13,7 +13,6 @@ def download_data(ticker: str, start: str, end: str, max_retries=6, cache_dir="d
     cached_file = cache_file if os.path.exists(cache_file) else find_latest_cache(ticker, cache_dir)
 
     if cached_file and os.path.exists(cached_file):
-        print(f"🔄 Usando cache local: {cached_file}")
         try:
             df = pd.read_csv(cached_file, index_col=0, parse_dates=True)
 
