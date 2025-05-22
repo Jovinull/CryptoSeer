@@ -1,13 +1,12 @@
-# config.py (atualizado para usar score_final como critério principal)
 import os
 import glob
 import pandas as pd
 
 # parâmetros fixos
-crypto_currency = 'DOGE'
+crypto_currency = 'BTC'
 against_currency = 'USD'
-start_date = "2020-01-01"
-test_start_date = "2022-01-01"
+start_date = "2010-01-01"
+test_start_date = "2015-01-01"
 end_date = None
 model_file = f"model_{crypto_currency}.h5"
 
